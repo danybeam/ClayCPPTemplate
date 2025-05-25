@@ -1,0 +1,35 @@
+﻿# CMakeList.txt : CMake project for MMZ4Parts, include source and define
+# project specific logic here.
+#
+cmake_minimum_required (VERSION 3.10)
+
+# Add source to this project's executable.
+add_executable (${CMAKE_PROJECT_NAME})
+
+target_sources(${CMAKE_PROJECT_NAME} PRIVATE
+	"main.cpp"
+ )
+
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
+"${PROJECT_SOURCE_DIR}/"
+"${PROJECT_SOURCE_DIR}/root/"
+"${PROJECT_SOURCE_DIR}/root/Clay"
+)
+
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
+	raylib
+)
+
+#target_link_libraries(MMZ4Parts PRIVATE
+#clay
+#)
+
+if (CMAKE_VERSION VERSION_GREATER 3.12)
+  set_property(TARGET ${CMAKE_PROJECT_NAME} PROPERTY CXX_STANDARD 20)
+endif()
+
+add_custom_command(
+        TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${PROJECT_SOURCE_DIR}/resources
+        ${PROJECT_BINARY_DIR}/resources)
