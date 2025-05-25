@@ -8,7 +8,20 @@ Clay_Arena clay_MemoryArena;
 Clay_Dimensions clay_Resolution;
 Clay_ErrorHandler clay_ErrorHandler;
 
-Font clay_DummyFont;
+enum FONT_WEIGHT : short
+{
+    FONT_EXTRALIGHT = 0,
+    FONT_ITALIC = 1,
+    FONT_LIGHT = 2,
+    FONT_SEMILIGHT = 4,
+    FONT_REGULAR = 6,
+    FONT_SEMIBOLD = 8,
+    FONT_BOLD = 10,
+
+    FONT_WEIGHT_END
+};
+
+Font clay_DummyFont[12] = {};
 Clay_RenderCommandArray clay_RenderCommandArray;
 
 void clay_ErrorHanderFunction(Clay_ErrorData ERR) {
@@ -29,11 +42,23 @@ int main() {
     clay_ErrorHandler = {};
     clay_ErrorHandler.errorHandlerFunction = clay_ErrorHanderFunction;
     clay_ErrorHandler.userData = nullptr;
-    clay_DummyFont = LoadFont("Resources/Roboto-Regular.ttf");
+
+    clay_DummyFont[0] = LoadFontEx("resources/CaskaydiaCove/CaskaydiaCoveExtraLight.otf", 32, 0, 400);
+    clay_DummyFont[1] = LoadFontEx("resources/CaskaydiaCove/CaskaydiaCoveExtraLightItalic.otf", 32, 0, 400);
+    clay_DummyFont[2] = LoadFontEx("resources/CaskaydiaCove/CaskaydiaCoveLight.otf", 32, 0, 400);
+    clay_DummyFont[3] = LoadFontEx("resources/CaskaydiaCove/CaskaydiaCoveLightItalic.otf", 32, 0, 400);
+    clay_DummyFont[4] = LoadFontEx("resources/CaskaydiaCove/CaskaydiaCoveSemiLight.otf", 32, 0, 400);
+    clay_DummyFont[5] = LoadFontEx("resources/CaskaydiaCove/CaskaydiaCoveSemiLightItalic.otf", 32, 0, 400);
+    clay_DummyFont[6] = LoadFontEx("resources/CaskaydiaCove/CaskaydiaCoveRegular.otf", 32, 0, 400);
+    clay_DummyFont[7] = LoadFontEx("resources/CaskaydiaCove/CaskaydiaCoveRegularItalic.otf", 32, 0, 400);
+    clay_DummyFont[8] = LoadFontEx("resources/CaskaydiaCove/CaskaydiaCoveSemiBold.otf", 32, 0, 400);
+    clay_DummyFont[9] = LoadFontEx("resources/CaskaydiaCove/CaskaydiaCoveSemiBoldItalic.otf", 32, 0, 400);
+    clay_DummyFont[10] = LoadFontEx("resources/CaskaydiaCove/CaskaydiaCoveBold.otf", 32, 0, 400);
+    clay_DummyFont[11] = LoadFontEx("resources/CaskaydiaCove/CaskaydiaCoveBoldItalic.otf", 32, 0, 400);
+
 
     Clay_Initialize(clay_MemoryArena, clay_Resolution, clay_ErrorHandler);
-
-    Clay_SetMeasureTextFunction(Raylib_MeasureText, &clay_DummyFont);
+    Clay_SetMeasureTextFunction(Raylib_MeasureText, clay_DummyFont);
 
     Clay_ElementDeclaration t_baseframe = {};
     t_baseframe.id = CLAY_ID("BaseFrame");
@@ -67,10 +92,149 @@ int main() {
 
         CLAY(t_baseframe) {
             CLAY_TEXT(
-                CLAY_STRING("Hello world"),
+                CLAY_STRING("Hello world in extra light"),
                 CLAY_TEXT_CONFIG(
                     {
                         .textColor = {255,255,0,255},
+                        .fontId = FONT_WEIGHT::FONT_EXTRALIGHT ,
+                        .fontSize = 32,
+                    }
+                    )
+            );
+            CLAY_TEXT(
+                CLAY_STRING("Hello world in extra light in italics"),
+                CLAY_TEXT_CONFIG(
+                    {
+                        .textColor = {255,255,0,255},
+                        .fontId = FONT_WEIGHT::FONT_EXTRALIGHT + FONT_WEIGHT::FONT_ITALIC,
+                        .fontSize = 32,
+                    }
+                    )
+            );
+
+            CLAY_TEXT(
+                CLAY_STRING(" "),
+                CLAY_TEXT_CONFIG({ .fontSize = 32, })
+            );
+
+            CLAY_TEXT(
+                CLAY_STRING("Hello world in light"),
+                CLAY_TEXT_CONFIG(
+                    {
+                        .textColor = {255,255,0,255},
+                        .fontId = FONT_WEIGHT::FONT_LIGHT ,
+                        .fontSize = 32,
+                    }
+                    )
+            );
+            CLAY_TEXT(
+                CLAY_STRING("Hello world in light in italics"),
+                CLAY_TEXT_CONFIG(
+                    {
+                        .textColor = {255,255,0,255},
+                        .fontId = FONT_WEIGHT::FONT_LIGHT + FONT_WEIGHT::FONT_ITALIC,
+                        .fontSize = 32,
+                    }
+                    )
+            );
+
+            CLAY_TEXT(
+                CLAY_STRING(" "),
+                CLAY_TEXT_CONFIG({ .fontSize = 32, })
+            );
+
+            CLAY_TEXT(
+                CLAY_STRING("Hello world in semi light"),
+                CLAY_TEXT_CONFIG(
+                    {
+                        .textColor = {255,255,0,255},
+                        .fontId = FONT_WEIGHT::FONT_SEMILIGHT ,
+                        .fontSize = 32,
+                    }
+                    )
+            );
+            CLAY_TEXT(
+                CLAY_STRING("Hello world in semi light in italics"),
+                CLAY_TEXT_CONFIG(
+                    {
+                        .textColor = {255,255,0,255},
+                        .fontId = FONT_WEIGHT::FONT_SEMILIGHT + FONT_WEIGHT::FONT_ITALIC,
+                        .fontSize = 32,
+                    }
+                    )
+            );
+
+            CLAY_TEXT(
+                CLAY_STRING(" "),
+                CLAY_TEXT_CONFIG({ .fontSize = 32, })
+            );
+
+            CLAY_TEXT(
+                CLAY_STRING("Hello world in regular"),
+                CLAY_TEXT_CONFIG(
+                    {
+                        .textColor = {255,255,0,255},
+                        .fontId = FONT_WEIGHT::FONT_REGULAR ,
+                        .fontSize = 32,
+                    }
+                    )
+            );
+            CLAY_TEXT(
+                CLAY_STRING("Hello world in regular in italics"),
+                CLAY_TEXT_CONFIG(
+                    {
+                        .textColor = {255,255,0,255},
+                        .fontId = FONT_WEIGHT::FONT_REGULAR + FONT_WEIGHT::FONT_ITALIC,
+                        .fontSize = 32,
+                    }
+                    )
+            );
+
+            CLAY_TEXT(
+                CLAY_STRING(" "),
+                CLAY_TEXT_CONFIG({ .fontSize = 32, })
+            );
+
+            CLAY_TEXT(
+                CLAY_STRING("Hello world in semibold"),
+                CLAY_TEXT_CONFIG(
+                    {
+                        .textColor = {255,255,0,255},
+                        .fontId = FONT_WEIGHT::FONT_SEMIBOLD ,
+                        .fontSize = 32,
+                    }
+                    )
+            );
+            CLAY_TEXT(
+                CLAY_STRING("Hello world in semibold in italics"),
+                CLAY_TEXT_CONFIG(
+                    {
+                        .textColor = {255,255,0,255},
+                        .fontId = FONT_WEIGHT::FONT_SEMIBOLD + FONT_WEIGHT::FONT_ITALIC,
+                        .fontSize = 32,
+                    }
+                    )
+            );
+            CLAY_TEXT(
+                CLAY_STRING(" "),
+                CLAY_TEXT_CONFIG({ .fontSize = 32, })
+            );
+            CLAY_TEXT(
+                CLAY_STRING("Hello world in bold"),
+                CLAY_TEXT_CONFIG(
+                    {
+                        .textColor = {255,255,0,255},
+                        .fontId = FONT_WEIGHT::FONT_BOLD ,
+                        .fontSize = 32,
+                    }
+                    )
+            );
+            CLAY_TEXT(
+                CLAY_STRING("Hello world in bold and italics"),
+                CLAY_TEXT_CONFIG(
+                    {
+                        .textColor = {255,255,0,255},
+                        .fontId = FONT_WEIGHT::FONT_BOLD + FONT_WEIGHT::FONT_ITALIC,
                         .fontSize = 32,
                     }
                     )
@@ -81,7 +245,7 @@ int main() {
 
         BeginDrawing();
         ClearBackground(raylib_ClearColour);
-        Clay_Raylib_Render(clay_RenderCommandArray, &clay_DummyFont);
+        Clay_Raylib_Render(clay_RenderCommandArray, clay_DummyFont);
         EndDrawing();
     }
 
