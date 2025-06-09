@@ -3,7 +3,7 @@
 #
 cmake_minimum_required (VERSION 3.10)
 
-option(PROFILING "Whether to activate profiling in the project" OFF)
+option(PROFILING "Whether to activate profiling in the project" ON)
 
 # Add source to this project's executable.
 add_executable (${CMAKE_PROJECT_NAME})
