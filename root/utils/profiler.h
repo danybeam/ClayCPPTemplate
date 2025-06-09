@@ -1,5 +1,6 @@
 //
 // Basic instrumentation profiler by Cherno
+// Video link: https://www.youtube.com/watch?v=xlAH4dbMVnU&list=PLlrATfBNZ98dudnM48yfGUldqGD0S4FFb&index=81
 
 // Usage: include this header file somewhere in your code (eg. precompiled header), and then use like:
 //
@@ -144,6 +145,8 @@ private:
     bool m_Stopped;
 };
 
+// the if preprocessor command and the macro commands are a mix of Cherno and danybeam (me)
+// Regardless of the copyright notice on modified versions of the code the code the section bellow should be considered under the MIT license.
 #if PROFILE
 #define PROFILE_SCOPE(name) InstrumentationTimer timer##__LINE__(name)
 #define PROFILE_FUNCTION() PROFILE_SCOPE(__FUNCSIG__)
