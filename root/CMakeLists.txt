@@ -31,6 +31,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 	${ROOT_SRC}
 	${SCRIPTS}
 	${UTILS}
+
+	# PRIVATE FILE_SET CXX_MODULES FILES # Needed for modules, there's none in the project yet
 )
 
 # Separate source groups
@@ -47,8 +49,6 @@ ${SCRIPTS}
 # Set target include directories
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
 "${PROJECT_SOURCE_DIR}/"
-"${PROJECT_SOURCE_DIR}/root/"
-"${PROJECT_SOURCE_DIR}/root/Clay"
 )
 
 # Set target PCH
