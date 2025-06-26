@@ -3,6 +3,10 @@
 #
 cmake_minimum_required (VERSION 3.28)
 
+
+message(STATUS "Pre-Platform")
+message(STATUS "${PLATFORM}")
+
 # Define executable
 add_executable (${CMAKE_PROJECT_NAME})
 
@@ -12,7 +16,7 @@ option(PROFILING "Whether to activate profiling in the project" ON)
 # Define sources by group
 # source files
 file(GLOB ROOT_SRC
-	"*.cpp"
+	"src/*.cpp"
 )
 
 # Management scripts
@@ -49,6 +53,8 @@ ${SCRIPTS}
 # Set target include directories
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
 "${PROJECT_SOURCE_DIR}/"
+"${PROJECT_SOURCE_DIR}/root"
+"${PROJECT_SOURCE_DIR}/ext/flecs/include"
 )
 
 # Set target PCH
@@ -59,6 +65,7 @@ target_precompile_headers(${CMAKE_PROJECT_NAME} PRIVATE
 # Link libraries to .exe
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
 	raylib
+	flecs_static
 )
 
 # set CPP version

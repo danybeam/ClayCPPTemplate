@@ -10,6 +10,10 @@ if (POLICY CMP0141)
 endif()
 
 project ("ClayTemplate")
+
+
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${CMAKE_PROJECT_NAME})
 
 # Add source to this project's executable.

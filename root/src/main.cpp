@@ -1,5 +1,7 @@
-#include "Clay/clay.h"
-#include "Clay/clay_renderer_raylib.cpp"
+#include <Clay/clay.h>
+#include <Clay/clay_renderer_raylib.cpp>  // NOLINT(bugprone-suspicious-include)
+
+#include <flecs.h>
 
 #include <iostream>
 
