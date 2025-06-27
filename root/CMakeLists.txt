@@ -3,10 +3,6 @@
 #
 cmake_minimum_required (VERSION 3.28)
 
-
-message(STATUS "Pre-Platform")
-message(STATUS "${PLATFORM}")
-
 # Define executable
 add_executable (${CMAKE_PROJECT_NAME})
 

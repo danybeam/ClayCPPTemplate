@@ -1,5 +1,11 @@
 message(STATUS "Adding Raylib")
+set(PLATFORM "SDL")
+set(SDL_RENDER OFF)
 add_subdirectory("raylib")
+
+target_include_directories(raylib PUBLIC
+  "${CMAKE_SOURCE_DIR}/ext/sdl/include/SDL3"
+)
 
 message(STATUS "Adding Flecs")
 option(FLECS_STATIC "Build static flecs lib" ON)

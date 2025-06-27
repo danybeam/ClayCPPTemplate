@@ -4,3 +4,6 @@
 [submodule "ext/flecs"]
 	path = ext/flecs
 	url = git@github.com:SanderMertens/flecs.git
+[submodule "ext/sdl"]
+	path = ext/sdl
+	url = git@github.com:libsdl-org/SDL.git

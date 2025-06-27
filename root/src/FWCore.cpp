@@ -1,5 +1,4 @@
-﻿#include "C:/home/src/ClayCPPTemplate/build/root/CMakeFiles/ClayTemplate.dir/Debug/cmake_pch.hxx"
-#include "FWCore.h"
+﻿#include "FWCore.h"
 
 fw::FWCore::FWCore(uint32_t width, uint32_t height) :
 m_window_client_width_(width),
