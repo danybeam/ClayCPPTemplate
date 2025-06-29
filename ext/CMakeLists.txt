@@ -2,6 +2,7 @@ message(STATUS "Adding Raylib")
 set(PLATFORM "SDL")
 set(SDL_RENDER OFF)
 add_subdirectory("raylib")
+set_property(TARGET raylib APPEND PROPERTY INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "raylib")
 
 target_include_directories(raylib PUBLIC
   "${CMAKE_SOURCE_DIR}/ext/sdl/include/SDL3"

@@ -16,3 +16,6 @@ build/
 
 # VSCode local directories
 .vscode
+
+# Jujutsu folder
+.jj/

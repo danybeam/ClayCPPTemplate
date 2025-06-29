@@ -14,6 +14,10 @@ option(PROFILING "Whether to activate profiling in the project" ON)
 file(GLOB ROOT_SRC
 	"src/*.cpp"
 )
+# header files
+file(GLOB ROOT_HDR
+	"src/*.h"
+)
 
 # Management scripts
 file(GLOB_RECURSE SCRIPTS
@@ -29,6 +33,7 @@ file(GLOB_RECURSE UTILS
 # Add sources to target
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 	${ROOT_SRC}
+	${ROOT_HDR}
 	${SCRIPTS}
 	${UTILS}
 
@@ -38,6 +43,9 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 # Separate source groups
 source_group("src" FILES
 ${ROOT_SRC}
+)
+source_group("hdr" FILES
+${ROOT_HDR}
 )
 source_group("utils" FILES
 ${UTILS}
@@ -50,6 +58,7 @@ ${SCRIPTS}
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
 "${PROJECT_SOURCE_DIR}/"
 "${PROJECT_SOURCE_DIR}/root"
+"${PROJECT_SOURCE_DIR}/root/src"
 "${PROJECT_SOURCE_DIR}/ext/flecs/include"
 )
 
