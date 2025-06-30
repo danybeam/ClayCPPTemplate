@@ -9,6 +9,7 @@ int main()
     START_SESSION("TestMemoryCheckSession");
     // Double scoped for profiling potential memory leak
     {
+        PROFILE_SCOPE_MEMORY("TestMemoryCheck");
         auto framework = fw::FWCore(1280, 720);
 
         switch (framework.Get_errorCodes())
@@ -23,7 +24,6 @@ int main()
         case fw::FWCore::ERRORCODES::NONE:
             break;
         }
-        PROFILE_SCOPE_MEMORY("TestMemoryCheck");
         auto world = std::make_unique<flecs::world>();
 
         framework.Run(std::move(world));

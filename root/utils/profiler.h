@@ -28,7 +28,13 @@
 #include <unordered_map>
 
 // TODO(danybeam) formatting
-// TODO(danybeam) How to track moving memory
+// TODO(danybeam) Add constructors for arrays and other stuff I saw in MTracker
+
+// Known issues:
+// - The profiler leverages custom deleters for unique pointers.
+//   This is not an issue per se (afaik) but either the program has to be designed around it
+//   or you need to do a small release to re-create the unique ptr with the custom deleter.
+//   (Check FWCore::Run for an example)
 
 class InstrumentationMemory;
 
@@ -47,6 +53,11 @@ struct ProfileLock
         saveProfiling--;
     };
 
+    static bool getForceLock()
+    {
+        return forceLock;
+    }
+
     static void requestForceLock()
     {
         forceLock = true;
@@ -56,7 +67,12 @@ struct ProfileLock
     {
         forceLock = false;
     }
-    
+
+    static uint8_t getSaveProfiling()
+    {
+        return saveProfiling;
+    }
+
 private:
     void* selfPointer; // without this the destructor gets called at weird times
     static uint8_t saveProfiling;
@@ -152,7 +168,6 @@ public:
         {
             throw "A memory instrumentor tried to write before registering";
         }
-        // TODO(danybeam) write this to add callstack
         if (m_ProfileCount_mem++ > 0)
             m_OutputStream << ",";
 
@@ -321,7 +336,7 @@ private:
 inline void* operator new(size_t size)
 {
     void* ptr = malloc(size);
-    if (ProfileLock::saveProfiling == 0 && !ProfileLock::forceLock)
+    if (ProfileLock::getSaveProfiling() == 0 && !ProfileLock::getForceLock())
     {
         ProfileLock lock;
         if (auto MemoryInstrumentation = Instrumentor::GetCurrentMemoryInstrumentation())
@@ -334,7 +349,7 @@ inline void* operator new(size_t size)
 
 inline void operator delete(void* memory)
 {
-    if (ProfileLock::saveProfiling == 0 && !ProfileLock::forceLock)
+    if (ProfileLock::getSaveProfiling() == 0 && !ProfileLock::getForceLock())
     {
         ProfileLock lock;
         if (auto MemoryInstrumentation = Instrumentor::GetCurrentMemoryInstrumentation())
@@ -345,10 +360,16 @@ inline void operator delete(void* memory)
     free(memory);
 }
 
+template <typename T>
+inline void profilingDeleter(T* memory)
+{
+    delete memory;
+}
+
 // The "if" preprocessor command and the macro commands are a mix of Cherno and danybeam (me)
 // Regardless of the copyright notice on modified versions of the code in the code the section bellow should be considered under the MIT license.
 #if PROFILE
-#define PROFILE_SCOPE_MEMORY(name) ProfileLock::forceLock = true;InstrumentationMemory memoryProfiler##__LINE__(name);ProfileLock::forceLock = false;
+#define PROFILE_SCOPE_MEMORY(name) ProfileLock::requestForceLock();InstrumentationMemory memoryProfiler##__LINE__(name);ProfileLock::requestForceUnlock();
 #define PROFILE_SCOPE_TIME(name) InstrumentationTimer timer##__LINE__(name)
 #define PROFILE_FUNCTION_TIME() PROFILE_SCOPE(__FUNCSIG__)
 #define START_SESSION(name)  Instrumentor::Get().BeginSession(name)

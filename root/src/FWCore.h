@@ -4,6 +4,7 @@
 #include <raylib.h>
 #include <SDL_events.h>
 #include <flecs.h>
+#include <functional>
 
 namespace flecs
 {
@@ -40,6 +41,8 @@ namespace fw
         static bool ProcessSDLEvent_wrapper(void* userData, SDL_Event* event);
         bool ProcessSDLEvent(SDL_Event* event);
 
+        static void freeUniquePointer(flecs::world* world);
+
     public:
         [[nodiscard]] uint8_t Get_errorCodes() const
         {
@@ -55,7 +58,8 @@ namespace fw
         Clay_Arena m_clay_MemoryArena;
 
         // flecs members
-        std::unique_ptr<flecs::world> m_world_;
+        using flecsWorldDeleter = std::function<void(flecs::world*)>;
+        std::unique_ptr<flecs::world, flecsWorldDeleter> m_world_;
 
         // framework members
         uint8_t m_errorCodes;

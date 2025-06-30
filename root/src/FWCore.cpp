@@ -26,7 +26,7 @@ fw::FWCore::~FWCore()
 
 uint32_t fw::FWCore::Run(std::unique_ptr<flecs::world>&& world)
 {
-    m_world_ = std::move(world);
+    m_world_ = std::unique_ptr<flecs::world, flecsWorldDeleter>(world.release(), &profilingDeleter<flecs::world>);
 
     double lastTime = utils::getSystemTimeSinceGameStart();
     double currentTime = lastTime;
@@ -204,4 +204,9 @@ bool fw::FWCore::ProcessSDLEvent(SDL_Event* event)
     }
 
     return true;
+}
+
+void fw::FWCore::freeUniquePointer(flecs::world* world)
+{
+    int foo = 9;
 }
