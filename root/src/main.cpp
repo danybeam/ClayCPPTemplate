@@ -1,8 +1,6 @@
 #include <FWCore.h>
 #include <flecs.h>
 
-#include "Font.h"
-
 int main()
 {
     // Double scoped for profiling potential memory leak

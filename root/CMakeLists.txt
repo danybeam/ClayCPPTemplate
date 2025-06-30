@@ -85,7 +85,9 @@ endif()
 
 # If PROFILING is requested add it to the project
 if(PROFILING)
-add_compile_definitions(PROFILE=1)
+target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE
+    $<$<CONFIG:Debug>:-DPROFILE=1> # Adds -DPROFILE=1 only in Debug builds
+)
 endif()
 
 # Change working directory

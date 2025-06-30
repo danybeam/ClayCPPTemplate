@@ -22,6 +22,54 @@
 
 #include <thread>
 
+#include <iostream>
+#include <stacktrace>
+
+// Memory profiling
+static uint8_t saveProfiling = 0;
+
+struct CallStackData
+{
+    std::stacktrace stacktrace = std::stacktrace::current();
+};
+
+struct ProfileLock
+{
+    void* selfPointer;
+    
+    ProfileLock()
+    {
+        selfPointer = this;
+        std::cout<< "Locking profiler " << selfPointer << std::endl;
+        saveProfiling++;
+    };
+    ~ProfileLock()
+    {
+        std::cout<< "Unlocking profiler " << selfPointer << std::endl;
+        saveProfiling--;
+    };
+};
+
+inline void* operator new(size_t size)
+{
+    if (saveProfiling == 0)
+    {
+        ProfileLock lock;
+        CallStackData test;
+    }
+    return malloc(size);
+}
+
+inline void operator delete(void* memory)
+{
+    std::cout << "deleted " << memory << std::endl;
+    free(memory);
+}
+
+
+
+
+// Time profiling
 struct ProfileResult
 {
     std::string Name;
@@ -146,7 +194,7 @@ private:
 };
 
 // the if preprocessor command and the macro commands are a mix of Cherno and danybeam (me)
-// Regardless of the copyright notice on modified versions of the code the code the section bellow should be considered under the MIT license.
+// Regardless of the copyright notice on modified versions of the code in the code the section bellow should be considered under the MIT license.
 #if PROFILE
 #define PROFILE_SCOPE(name) InstrumentationTimer timer##__LINE__(name)
 #define PROFILE_FUNCTION() PROFILE_SCOPE(__FUNCSIG__)
