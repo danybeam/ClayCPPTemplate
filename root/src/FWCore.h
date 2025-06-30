@@ -3,6 +3,7 @@
 #include <Clay/clay.h>
 #include <raylib.h>
 #include <SDL_events.h>
+#include <flecs.h>
 
 namespace flecs
 {
@@ -25,7 +26,7 @@ namespace fw
         FWCore(uint32_t width, uint32_t height);
         virtual ~FWCore();
 
-        uint32_t Run(flecs::world& world);
+        uint32_t Run(std::unique_ptr<flecs::world>&& world);
 
     private:
         uint8_t Init();
@@ -39,6 +40,12 @@ namespace fw
         static bool ProcessSDLEvent_wrapper(void* userData, SDL_Event* event);
         bool ProcessSDLEvent(SDL_Event* event);
 
+    public:
+        [[nodiscard]] uint8_t Get_errorCodes() const
+        {
+            return m_errorCodes;
+        }
+
     private:
         // Clay members
         Clay_ErrorHandler m_clay_ErrorHandler;
@@ -48,18 +55,11 @@ namespace fw
         Clay_Arena m_clay_MemoryArena;
 
         // flecs members
-        flecs::world* m_world_;
+        std::unique_ptr<flecs::world> m_world_;
 
         // framework members
         uint8_t m_errorCodes;
 
-    public:
-        [[nodiscard]] uint8_t Get_errorCodes() const
-        {
-            return m_errorCodes;
-        }
-
-    private:
         // IO state members
         bool m_fullscreen_mode_ = false;
         bool m_key_states_[256] = {};
@@ -70,7 +70,7 @@ namespace fw
         bool m_window_is_active_ = false;
 
         // Raylib members
-        Color raylib_ClearColour = {255, 255, 255, 255};
+        Color m_raylib_ClearColour = {255, 255, 255, 255};
         Font m_clay_Font[12];
 
         // Window members

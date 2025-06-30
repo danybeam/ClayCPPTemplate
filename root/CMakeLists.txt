@@ -29,6 +29,9 @@ file(GLOB_RECURSE UTILS
 	"utils/*.h"
 	"utils/*.cpp"
 )
+file(GLOB_RECURSE UTILS_MODULES
+	"utils/*.ixx"
+)
 
 # Add sources to target
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
@@ -37,7 +40,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 	${SCRIPTS}
 	${UTILS}
 
-	# PRIVATE FILE_SET CXX_MODULES FILES # Needed for modules, there's none in the project yet
+	PRIVATE FILE_SET CXX_MODULES FILES # Needed for modules, there's none in the project yet
+	${UTILS_MODULES}
 )
 
 # Separate source groups
@@ -49,6 +53,7 @@ ${ROOT_HDR}
 )
 source_group("utils" FILES
 ${UTILS}
+${UTILS_MODULES}
 )
 source_group("scripts" FILES
 ${SCRIPTS}

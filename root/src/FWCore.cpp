@@ -9,6 +9,7 @@
 #include <SDL.h>
 
 #include "Font.h"
+import utils;
 
 fw::FWCore::FWCore(uint32_t width, uint32_t height) :
     m_errorCodes(NONE),
@@ -23,244 +24,76 @@ fw::FWCore::~FWCore()
     Shutdown();
 }
 
-uint32_t fw::FWCore::Run(flecs::world& world)
+uint32_t fw::FWCore::Run(std::unique_ptr<flecs::world>&& world)
 {
-    // TODO(danybeam): Should I assume the world comes pre-configured? if so I should probably do a move here
-    // TODO(danybeam): Save world reference
-    // TODO(danybeam): loop updates
-    // TODO(danybeam) make sample code smaller
-    Clay_ElementDeclaration t_baseFrame = {};
-    t_baseFrame.id = CLAY_ID("BaseFrame");
-    t_baseFrame.backgroundColor = {.r = 0, .g = 0, .b = 0, .a = 255};
-    t_baseFrame.layout.sizing = {.width = CLAY_SIZING_GROW(), .height = CLAY_SIZING_GROW()};
-    t_baseFrame.layout.layoutDirection = CLAY_TOP_TO_BOTTOM;
+    m_world_ = std::move(world);
 
-    while (!WindowShouldClose())
-    {
-        Clay_BeginLayout();
+    double lastTime = utils::getSystemTimeSinceGameStart();
+    double currentTime = lastTime;
+    float deltaTime = 0;
 
-        CLAY(t_baseFrame)
+    // TODO(Implementation) This needs to be yanked out
+    // TODO(Implementation) Implement flecs modules in project
+    // TODO(Implementation) Do world setup in main before calling this function
+    m_world_->system().run(
+        [=](flecs::iter& it)
         {
-            CLAY_TEXT(
-                CLAY_STRING("Hello world in extra light"),
-                CLAY_TEXT_CONFIG(
-                    {
-                    .userData = nullptr,
-                    .textColor = {255,255,0,255},
-                    .fontId = FONT_WEIGHT::FONT_EXTRALIGHT ,
-                    .fontSize = 32,
-                    .letterSpacing = 0,
-                    .lineHeight = 0,
-                    .wrapMode = CLAY_TEXT_WRAP_WORDS,
-                    .textAlignment = CLAY_TEXT_ALIGN_CENTER,
-                    }
+            Clay_ElementDeclaration t_baseFrame = {};
+            t_baseFrame.id = CLAY_ID("BaseFrame");
+            t_baseFrame.backgroundColor = {.r = 0, .g = 0, .b = 0, .a = 255};
+            t_baseFrame.layout.sizing = {.width = CLAY_SIZING_GROW(), .height = CLAY_SIZING_GROW()};
+            t_baseFrame.layout.layoutDirection = CLAY_TOP_TO_BOTTOM;
 
-                )
-            );
-            CLAY_TEXT(
-                CLAY_STRING("Hello world in extra light in italics"),
-                CLAY_TEXT_CONFIG(
-                    {
-                    .userData = nullptr,
-                    .textColor = {255,255,0,255},
-                    .fontId = FONT_WEIGHT::FONT_EXTRALIGHT + FONT_WEIGHT::FONT_ITALIC,
-                    .fontSize = 32,
-                    .letterSpacing = 0,
-                    .lineHeight = 0,
-                    .wrapMode = CLAY_TEXT_WRAP_WORDS,
-                    .textAlignment = CLAY_TEXT_ALIGN_CENTER,
-                    }
-                )
-            );
+            Clay_BeginLayout();
 
-            CLAY_TEXT(
-                CLAY_STRING(" "),
-                CLAY_TEXT_CONFIG({ .fontSize = 32, }) // NOLINT(clang-diagnostic-missing-designated-field-initializers)
-            );
+            CLAY(t_baseFrame)
+            {
+                CLAY_TEXT(
+                    CLAY_STRING(
+                        "This is a sample screen to test compilation and basic functionality. check FWCore.cpp to remove this and check the TODO(Implementation) comments."
+                    ),
+                    CLAY_TEXT_CONFIG(
+                        {
+                        .userData = nullptr,
+                        .textColor = {255,255,0,255},
+                        .fontId = FONT_WEIGHT::FONT_REGULAR ,
+                        .fontSize = 32,
+                        .letterSpacing = 0,
+                        .lineHeight = 0,
+                        .wrapMode = CLAY_TEXT_WRAP_WORDS,
+                        .textAlignment = CLAY_TEXT_ALIGN_CENTER,
+                        }
 
-            CLAY_TEXT(
-                CLAY_STRING("Hello world in light"),
-                CLAY_TEXT_CONFIG(
-                    {
-                    .userData = nullptr,
-                    .textColor = {255,255,0,255},
-                    .fontId = FONT_WEIGHT::FONT_LIGHT ,
-                    .fontSize = 32,
-                    .letterSpacing = 0,
-                    .lineHeight = 0,
-                    .wrapMode = CLAY_TEXT_WRAP_WORDS,
-                    .textAlignment = CLAY_TEXT_ALIGN_CENTER,
-                    }
-                )
-            );
-            CLAY_TEXT(
-                CLAY_STRING("Hello world in light in italics"),
-                CLAY_TEXT_CONFIG(
-                    {
-                    .userData = nullptr,
-                    .textColor = {255,255,0,255},
-                    .fontId = FONT_WEIGHT::FONT_LIGHT + FONT_WEIGHT::FONT_ITALIC,
-                    .fontSize = 32,
-                    .letterSpacing = 0,
-                    .lineHeight = 0,
-                    .wrapMode = CLAY_TEXT_WRAP_WORDS,
-                    .textAlignment = CLAY_TEXT_ALIGN_CENTER,
-                    }
-                )
-            );
+                    )
+                );
+            }
 
-            CLAY_TEXT(
-                CLAY_STRING(" "),
-                CLAY_TEXT_CONFIG({ .fontSize = 32, }) // NOLINT(clang-diagnostic-missing-designated-field-initializers)
-            );
+            auto clay_RenderCommandArray = Clay_EndLayout();
 
-            CLAY_TEXT(
-                CLAY_STRING("Hello world in semi light"),
-                CLAY_TEXT_CONFIG(
-                    {
-                    .userData = nullptr,
-                    .textColor = {255,255,0,255},
-                    .fontId = FONT_WEIGHT::FONT_SEMILIGHT ,
-                    .fontSize = 32,
-                    .letterSpacing = 0,
-                    .lineHeight = 0,
-                    .wrapMode = CLAY_TEXT_WRAP_WORDS,
-                    .textAlignment = CLAY_TEXT_ALIGN_CENTER,
-                    }
-                )
-            );
-            CLAY_TEXT(
-                CLAY_STRING("Hello world in semi light in italics"),
-                CLAY_TEXT_CONFIG(
-                    {
-                    .userData = nullptr,
-                    .textColor = {255,255,0,255},
-                    .fontId = FONT_WEIGHT::FONT_SEMILIGHT + FONT_WEIGHT::FONT_ITALIC,
-                    .fontSize = 32,
-                    .letterSpacing = 0,
-                    .lineHeight = 0,
-                    .wrapMode = CLAY_TEXT_WRAP_WORDS,
-                    .textAlignment = CLAY_TEXT_ALIGN_CENTER,
-                    }
-                )
-            );
-
-            CLAY_TEXT(
-                CLAY_STRING(" "),
-                CLAY_TEXT_CONFIG({ .fontSize = 32, }) // NOLINT(clang-diagnostic-missing-designated-field-initializers)
-            );
-
-            CLAY_TEXT(
-                CLAY_STRING("Hello world in regular"),
-                CLAY_TEXT_CONFIG(
-                    {
-                    .userData = nullptr,
-                    .textColor = {255,255,0,255},
-                    .fontId = FONT_WEIGHT::FONT_REGULAR ,
-                    .fontSize = 32,
-                    .letterSpacing = 0,
-                    .lineHeight = 0,
-                    .wrapMode = CLAY_TEXT_WRAP_WORDS,
-                    .textAlignment = CLAY_TEXT_ALIGN_CENTER,
-                    }
-                )
-            );
-            CLAY_TEXT(
-                CLAY_STRING("Hello world in regular in italics"),
-                CLAY_TEXT_CONFIG(
-                    {
-                    .userData = nullptr,
-                    .textColor = {255,255,0,255},
-                    .fontId = FONT_WEIGHT::FONT_REGULAR + FONT_WEIGHT::FONT_ITALIC,
-                    .fontSize = 32,
-                    .letterSpacing = 0,
-                    .lineHeight = 0,
-                    .wrapMode = CLAY_TEXT_WRAP_WORDS,
-                    .textAlignment = CLAY_TEXT_ALIGN_CENTER,
-                    }
-                )
-            );
-
-            CLAY_TEXT(
-                CLAY_STRING(" "), // NOLINT(clang-diagnostic-missing-designated-field-initializers)
-                CLAY_TEXT_CONFIG({ .fontSize = 32, }) // NOLINT(clang-diagnostic-missing-designated-field-initializers)
-            );
-
-            CLAY_TEXT(
-                CLAY_STRING("Hello world in semibold"),
-                CLAY_TEXT_CONFIG(
-                    {
-                    .userData = nullptr,
-                    .textColor = {255,255,0,255},
-                    .fontId = FONT_WEIGHT::FONT_SEMIBOLD ,
-                    .fontSize = 32,
-                    .letterSpacing = 0,
-                    .lineHeight = 0,
-                    .wrapMode = CLAY_TEXT_WRAP_WORDS,
-                    .textAlignment = CLAY_TEXT_ALIGN_CENTER,
-                    }
-                )
-            );
-            CLAY_TEXT(
-                CLAY_STRING("Hello world in semibold in italics"),
-                CLAY_TEXT_CONFIG(
-                    {
-                    .userData = nullptr,
-                    .textColor = {255,255,0,255},
-                    .fontId = FONT_WEIGHT::FONT_SEMIBOLD + FONT_WEIGHT::FONT_ITALIC,
-                    .fontSize = 32,
-                    .letterSpacing = 0,
-                    .lineHeight = 0,
-                    .wrapMode = CLAY_TEXT_WRAP_WORDS,
-                    .textAlignment = CLAY_TEXT_ALIGN_CENTER,
-                    }
-                )
-            );
-            CLAY_TEXT(
-                CLAY_STRING(" "), // NOLINT(clang-diagnostic-missing-designated-field-initializers, clang-diagnostic-missing-designated-field-initializers)
-                CLAY_TEXT_CONFIG({ .fontSize = 32, }) // NOLINT(clang-diagnostic-missing-designated-field-initializers)
-            );
-            CLAY_TEXT(
-                CLAY_STRING("Hello world in bold"),
-                CLAY_TEXT_CONFIG(
-                    {
-                    .userData = nullptr,
-                    .textColor = {255,255,0,255},
-                    .fontId = FONT_WEIGHT::FONT_BOLD ,
-                    .fontSize = 32,
-                    .letterSpacing = 0,
-                    .lineHeight = 0,
-                    .wrapMode = CLAY_TEXT_WRAP_WORDS,
-                    .textAlignment = CLAY_TEXT_ALIGN_CENTER,
-                    }
-                )
-            );
-            CLAY_TEXT(
-                CLAY_STRING("Hello world in bold and italics"),
-                CLAY_TEXT_CONFIG(
-                    {
-                    .userData = nullptr,
-                    .textColor = {255,255,0,255},
-                    .fontId = FONT_WEIGHT::FONT_BOLD + FONT_WEIGHT::FONT_ITALIC,
-                    .fontSize = 32,
-                    .letterSpacing = 0,
-                    .lineHeight = 0,
-                    .wrapMode = CLAY_TEXT_WRAP_WORDS,
-                    .textAlignment = CLAY_TEXT_ALIGN_CENTER,
-                    }
-                )
-            );
+            BeginDrawing();
+            ClearBackground({255, 255, 255, 255});
+            Clay_Raylib_Render(clay_RenderCommandArray, m_clay_Font);
+            EndDrawing();
         }
+    );
 
-        m_clay_RenderCommandArray = Clay_EndLayout();
+    do
+    {
+        // Calculate delta time
+        deltaTime = static_cast<float>(currentTime - lastTime);
+        lastTime = currentTime;
+        // Backup the state of the keyboard and mouse.
+        for (int i = 0; i < 256; i++)
+            m_old_key_states_[i] = m_key_states_[i];
 
-        BeginDrawing();
-        ClearBackground(raylib_ClearColour);
-        Clay_Raylib_Render(m_clay_RenderCommandArray, m_clay_Font);
-        EndDrawing();
+        for (int i = 0; i < 3; i++)
+            m_old_mouse_button_states_[i] = m_mouse_button_states_[i];
+
+        // Reset mouse wheel scroll
+        m_mouse_wheel_ = 0;
     }
+    while (!WindowShouldClose() && m_world_->progress(deltaTime));
 
-    CloseWindow();
     return 0;
 }
 
@@ -327,8 +160,7 @@ void fw::FWCore::Shutdown()
 {
     ShutdownClay();
     ShutdownSDL();
-
-    // TODO(danybeam) check if flecs needs any special destruction
+    CloseWindow();
 }
 
 void fw::FWCore::ShutdownClay()
@@ -360,19 +192,12 @@ bool fw::FWCore::ProcessSDLEvent_wrapper(void* userData, SDL_Event* event)
     return false;
 }
 
+// ReSharper disable once CppMemberFunctionMayBeStatic
 bool fw::FWCore::ProcessSDLEvent(SDL_Event* event)
 {
+    // TODO(Implementation) Do your event processing here
     switch (event->type)
     {
-    case SDL_EVENT_KEY_DOWN:
-        SDL_Log("Key down");
-        break;
-    case SDL_EVENT_KEY_UP:
-        SDL_Log("Key up");
-        break;
-    case SDL_EVENT_MOUSE_BUTTON_DOWN:
-        SDL_Log("Mouse Down");
-        break;
     default:
         SDL_Log("Unknown Event");
         break;
