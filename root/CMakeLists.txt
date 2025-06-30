@@ -40,7 +40,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 	${SCRIPTS}
 	${UTILS}
 
-	PRIVATE FILE_SET CXX_MODULES FILES # Needed for modules, there's none in the project yet
+	PRIVATE FILE_SET CXX_MODULES FILES # Needed for modules
 	${UTILS_MODULES}
 )
 
@@ -75,13 +75,12 @@ target_precompile_headers(${CMAKE_PROJECT_NAME} PRIVATE
 # Link libraries to .exe
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
 	raylib
+	SDL3::SDL3 # the ext CMakeLists specifies raylib to compile using SDL publicly but here we're linking it directly to avoid potential breaking changes 
 	flecs_static
 )
 
 # set CPP version
-if (CMAKE_VERSION VERSION_GREATER 3.12)
-  set_property(TARGET ${CMAKE_PROJECT_NAME} PROPERTY CXX_STANDARD 20)
-endif()
+set_property(TARGET ${CMAKE_PROJECT_NAME} PROPERTY CXX_STANDARD 23)
 
 # If PROFILING is requested add it to the project
 if(PROFILING)

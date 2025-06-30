@@ -1,8 +1,12 @@
 #include <FWCore.h>
 #include <flecs.h>
 
+uint8_t ProfileLock::saveProfiling = 0; // Necessary to define saveProfiling
+bool ProfileLock::forceLock = false;
+
 int main()
 {
+    START_SESSION("TestMemoryCheckSession");
     // Double scoped for profiling potential memory leak
     {
         auto framework = fw::FWCore(1280, 720);
@@ -19,11 +23,11 @@ int main()
         case fw::FWCore::ERRORCODES::NONE:
             break;
         }
-
+        PROFILE_SCOPE_MEMORY("TestMemoryCheck");
         auto world = std::make_unique<flecs::world>();
 
         framework.Run(std::move(world));
     }
-
+    END_SESSION();
     return 0;
 }
