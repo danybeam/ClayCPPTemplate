@@ -26,7 +26,7 @@ fw::FWCore::~FWCore()
 
 uint32_t fw::FWCore::Run(std::unique_ptr<flecs::world>&& world)
 {
-    m_world_ = std::unique_ptr<flecs::world, flecsWorldDeleter>(world.release(), &profilingDeleter<flecs::world>);
+    m_world_ = std::move(world);
 
     double lastTime = utils::getSystemTimeSinceGameStart();
     double currentTime = lastTime;

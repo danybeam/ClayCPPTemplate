@@ -31,10 +31,8 @@
 // TODO(danybeam) Add constructors for arrays and other stuff I saw in MTracker
 
 // Known issues:
-// - The profiler leverages custom deleters for unique pointers.
-//   This is not an issue per se (afaik) but either the program has to be designed around it
-//   or you need to do a small release to re-create the unique ptr with the custom deleter.
-//   (Check FWCore::Run for an example)
+// - The profiling macro needs to be the first thing in the scope to make sure it gets freed last.
+//  - IDK if there's any way around that
 
 class InstrumentationMemory;
 
@@ -358,12 +356,6 @@ inline void operator delete(void* memory)
     }
 
     free(memory);
-}
-
-template <typename T>
-inline void profilingDeleter(T* memory)
-{
-    delete memory;
 }
 
 // The "if" preprocessor command and the macro commands are a mix of Cherno and danybeam (me)
