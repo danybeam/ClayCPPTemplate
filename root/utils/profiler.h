@@ -1,8 +1,8 @@
 //
-// Basic instrumentation profiler by Cherno
+// Basic instrumentation profiler by Cherno expanded by danybeam
 // Video link: https://www.youtube.com/watch?v=xlAH4dbMVnU&list=PLlrATfBNZ98dudnM48yfGUldqGD0S4FFb&index=81
 
-// Usage: include this header file somewhere in your code (eg. precompiled header), and then use like:
+// Usage: include this header file somewhere in your code (e.g. precompiled header), and then use like:
 //
 // Instrumentor::Get().BeginSession("Session Name");        // Begin session 
 // {
@@ -13,275 +13,444 @@
 //
 // You will probably want to macro-fy this, to switch on/off easily and use things like __FUNCSIG__ for the profile name.
 //
+// ReSharper disable CppParameterMayBeConstPtrOrRef
 #pragma once
 
-#include <string>
-#include <chrono>
 #include <algorithm>
+#include <chrono>
 #include <fstream>
-
-#include <thread>
-
 #include <iostream>
 #include <ranges>
 #include <stacktrace>
+#include <string>
+#include <thread>
 #include <unordered_map>
 
-// TODO(danybeam) formatting
-// TODO(danybeam) Add constructors for arrays and other stuff I saw in MTracker
+/*
+ * Known issues:
+ * - The profiling macro needs to be the first thing in the scope to make sure it gets freed last.
+ *     - IDK if there's any way around that
+ * - This has not been tested in multithreaded apps.
+ *     - Even if it could work out of the box IDK what settings should be used. 
+ */
 
-// Known issues:
-// - The profiling macro needs to be the first thing in the scope to make sure it gets freed last.
-//  - IDK if there's any way around that
 
-class InstrumentationMemory;
-
+/**
+ * Mutex-like object to avoid infinite recursion when calling new or delete
+ */
 struct ProfileLock
 {
+    /**
+     * ProfileLock constructor, this takes ownership of the lock automatically
+     */
     ProfileLock()
     {
-        selfPointer = this;
-        std::cout << "Locking profiler " << selfPointer << std::endl;
-        saveProfiling++;
+        selfPointer_ = this;
+        std::cout << "Locking profiler " << selfPointer_ << std::endl;
+        semaphore_--;
     };
 
+    /**
+     * ProfileLock destructor, this releases ownership of the lock automatically
+     */
     ~ProfileLock()
     {
-        std::cout << "Unlocking profiler " << selfPointer << std::endl;
-        saveProfiling--;
+        std::cout << "Unlocking profiler " << selfPointer_ << std::endl;
+        semaphore_++;
     };
 
-    static bool getForceLock()
+    /**
+     * Get the status of forceLock
+     * @return forceLock_ Whether the lock is being forced or not
+     */
+    static bool GetForceLock()
     {
-        return forceLock;
+        return forceLock_;
     }
 
-    static void requestForceLock()
+    /**
+     * Try to activate the force lock
+     * @todo actually 'try' instead of just forcing it.I would need to have some metric of when the lock is absolutely necessary.
+     * This might not be necessary until/unless this "library"(header) becomes multithread safe
+     */
+    static void RequestForceLock()
     {
-        forceLock = true;
+        forceLock_ = true;
     }
 
-    static void requestForceUnlock()
+    /**
+     * Try to deactivate the force lock
+     * @todo actually 'try' instead of just forcing it. I would need to have some metric of when the lock is absolutely necessary.
+     * This might not be necessary until/unless this "library"(header) becomes multithread safe
+     */
+    static void RequestForceUnlock()
     {
-        forceLock = false;
+        forceLock_ = false;
     }
 
-    static uint8_t getSaveProfiling()
+    /**
+     * Get the status of the semaphore value
+     * @remark Mostly for debugging purposes
+     * @return The current status of saveProfiling
+     */
+    static uint8_t GetSaveProfiling()
     {
-        return saveProfiling;
+        return semaphore_;
     }
 
 private:
-    void* selfPointer; // without this the destructor gets called at weird times
-    static uint8_t saveProfiling;
-    static bool forceLock;
+    void* selfPointer_; /**< does nothing. Without this the destructor gets called at weird times. */
+
+    static uint8_t semaphore_;
+    /**< Semaphore counter for the lock. Should be defined as one, more than one would work, but it would just get consumed when creating the stack trace. @remark This should change if this becomes multithreaded. IDK how it would behave*/
+    static bool forceLock_; /**< Bool to control whether to override the status of the lock and force it.*/
 };
 
+/**
+ * Struct to store the result of a timer profiling
+ */
 struct ProfileResult_Time
 {
-    std::string Name;
-    long long Start, End;
-    uint32_t ThreadID;
+    std::string name; /**< The name of what is being profiled. */
+    uint32_t threadId; /**< The thread of the function call being measured. */
+    long long start, end; /**< Time stamp of the profiling */
 };
 
+/**
+ * Struct to store the result of a memory profiling
+ */
 struct ProfileResult_Memory
 {
-    void* location;
-    size_t size;
-    std::stacktrace StackTrace;
-    long long Start, End = -1;
+    bool isArray; /**< Whether the memory allocation was for an array or not. */
+    void* location; /**< Pointer to the location that memory is being allocated to. */
+    size_t size; /**< How much memory was allocated. */
+    std::stacktrace stackTrace; /**< The stack trace of where the memory was allocated in code. */
+    long long start, end = -1; /**< Time stamp of the profiling */
 };
 
+/**
+ * Struct related to the instrumentation session. Right now it only stores the name of the session.
+ */
 struct InstrumentationSession
 {
-    std::string Name;
+    std::string name;
 };
 
+/**
+ * Class to manage profiling sessions. It only tracks one concurrent session at a time.
+ */
 class Instrumentor
 {
 private:
-    InstrumentationSession* m_CurrentSession;
-    InstrumentationMemory* m_CurrentMemoryCheck = nullptr;
-    std::ofstream m_OutputStream;
-    int m_ProfileCount_time;
-    int m_ProfileCount_mem;
+    class InstrumentationMemory* m_currentMemoryCheck_ = nullptr; /**< Ref pointer to the current memory profiler. */
+    InstrumentationSession* m_currentSession_; /**< The current instrumentation session going on. */
+    std::ofstream m_outputStream_; /**< handler of the file to write the results into. */
+    int m_profileCount_mem_; /**< Counter of how many entries have been in the memory profiling */
+    int m_profileCount_time_; /**< Counter of how many entries have been in the time profiling */
 
-public:
-    Instrumentor()
-        : m_CurrentSession(nullptr), m_ProfileCount_time(0), m_ProfileCount_mem(0)
+    /**
+     * Construct the instrumentor with default values.
+     * Made private to prevent having multiple instances.
+     */
+    Instrumentor():
+        m_currentSession_(nullptr),
+        m_profileCount_mem_(0),
+        m_profileCount_time_(0)
     {
     }
 
+public:
+    /**
+     * Start a profiling session.
+     * @param name Name of the session
+     * @param filepath Path to save the session info into.
+     */
     void BeginSession(const std::string& name, const std::string& filepath = "results.json")
     {
-        if (m_CurrentSession)
+        if (m_currentSession_)
         {
             throw
                 "There is already a profiling session running. Make sure you're not calling START_SESSION(name) more than once";
         }
 
-        m_OutputStream.open(filepath);
+        m_outputStream_.open(filepath);
         WriteHeader();
-        m_CurrentSession = new InstrumentationSession{name};
+        m_currentSession_ = new InstrumentationSession{name};
     }
 
+    /**
+     * End the current profiling session.
+     * @throws error Errors if trying to end a session before it starts/
+     */
     void EndSession()
     {
-        if (!m_CurrentSession)
+        if (!m_currentSession_)
         {
             throw "Closing a session was requested even though there's no sessions running.";
         }
 
         WriteFooter();
-        m_OutputStream.close();
-        delete m_CurrentSession;
-        m_CurrentSession = nullptr;
-        m_ProfileCount_time = 0;
+        m_outputStream_.close();
+        delete m_currentSession_;
+        m_currentSession_ = nullptr;
+        m_profileCount_time_ = 0;
     }
 
-    void WriteProfile(const ProfileResult_Time& result)
+    /**
+     * Write the profiling data of a timer profiling into the file.
+     * @param profilingData The data of the timer profiling result
+     */
+    void WriteProfile(const ProfileResult_Time& profilingData)
     {
-        if (m_ProfileCount_time++ > 0)
-            m_OutputStream << ",";
+        if (m_profileCount_time_++ > 0)
+            m_outputStream_ << ",";
 
-        std::string name = result.Name;
-        std::replace(name.begin(), name.end(), '"', '\'');
+        std::string name = profilingData.name;
+        std::ranges::replace(name, '"', '\'');
 
-        m_OutputStream << "{";
-        m_OutputStream << "\"cat\":\"function\",";
-        m_OutputStream << "\"dur\":" << (result.End - result.Start) << ',';
-        m_OutputStream << "\"name\":\"" << name << "\",";
-        m_OutputStream << "\"ph\":\"X\",";
-        m_OutputStream << "\"pid\":0,";
-        m_OutputStream << "\"tid\":" << result.ThreadID << ",";
-        m_OutputStream << "\"ts\":" << result.Start;
-        m_OutputStream << "}";
+        m_outputStream_ << "{";
+        m_outputStream_ << "\"cat\":\"function\",";
+        m_outputStream_ << "\"dur\":" << (profilingData.end - profilingData.start) << ',';
+        m_outputStream_ << "\"name\":\"" << name << "\",";
+        m_outputStream_ << "\"ph\":\"X\",";
+        m_outputStream_ << "\"pid\":0,";
+        m_outputStream_ << "\"tid\":" << profilingData.threadId << ",";
+        m_outputStream_ << "\"ts\":" << profilingData.start;
+        m_outputStream_ << "}";
 
-        m_OutputStream.flush();
+        m_outputStream_.flush();
     }
 
-    void WriteProfile(const ProfileResult_Memory& result)
+    /**
+     * Write the profiling data of a memory profiling session into the file.
+     * @param profilingData The data of the memory profiling result
+     */
+    void WriteProfile(const ProfileResult_Memory& profilingData)
     {
-        if (m_CurrentMemoryCheck == nullptr)
+        if (m_currentMemoryCheck_ == nullptr)
         {
             throw "A memory instrumentor tried to write before registering";
         }
-        if (m_ProfileCount_mem++ > 0)
-            m_OutputStream << ",";
+        if (m_profileCount_mem_++ > 0)
+            m_outputStream_ << ",";
 
-        uint32_t threadID = static_cast<uint32_t>(std::hash<std::thread::id>{}(std::this_thread::get_id()));
+        const uint32_t threadId = static_cast<uint32_t>(std::hash<std::thread::id>{}(std::this_thread::get_id()));
 
-        m_OutputStream << "{";
-        m_OutputStream << "\"cat\":\"" << ((result.End >= 0) ? "Deallocated mem" : "Memory leaked") << "\",";
-        m_OutputStream << "\"dur(ms)\":" << ((result.End >= 0) ? (result.End - result.Start) : -1) << ',';
-        m_OutputStream << "\"name\":\"" << result.location << "\",";
-        m_OutputStream << "\"tid\":" << threadID << ",";
-        m_OutputStream << "\"tStart\":" << result.Start << ",";
-        m_OutputStream << "\"tEnd\":" << result.End << ",";
-        m_OutputStream << "\"size\":" << result.size << ",";
-        m_OutputStream << "\"callStack\":[";
-        for (int i = 0; i < result.StackTrace.size(); i++)
+        m_outputStream_ << "{";
+        m_outputStream_ << "\"cat\":\"" << ((profilingData.end >= 0) ? "Deallocated mem" : "Memory leaked") << "\",";
+        m_outputStream_ << "\"dur(ms)\":" << ((profilingData.end >= 0) ? (profilingData.end - profilingData.start) : -1)
+            << ',';
+        m_outputStream_ << "\"name\":\"" << profilingData.location << "\",";
+        m_outputStream_ << "\"tid\":" << threadId << ",";
+        m_outputStream_ << "\"tStart\":" << profilingData.start << ",";
+        m_outputStream_ << "\"tEnd\":" << profilingData.end << ",";
+        m_outputStream_ << "\"size\":" << profilingData.size << ",";
+        m_outputStream_ << "\"callStack\":[";
+        for (int i = 0; i < profilingData.stackTrace.size(); i++)
         {
-            std::string stackTraceString = std::to_string(result.StackTrace[i]);
-            std::replace(stackTraceString.begin(), stackTraceString.end(), '\\', '/');
+            std::string stackTraceString = std::to_string(profilingData.stackTrace[i]);
+            std::ranges::replace(stackTraceString, '\\', '/');
 
-            m_OutputStream << "\"";
-            m_OutputStream << stackTraceString;
-            m_OutputStream << "\"";
-            if (i < result.StackTrace.size() - 1)
+            m_outputStream_ << "\"";
+            m_outputStream_ << stackTraceString;
+            m_outputStream_ << "\"";
+            if (i < profilingData.stackTrace.size() - 1)
             {
-                m_OutputStream << ",";
+                m_outputStream_ << ",";
             }
         }
-        m_OutputStream << "]";
-        m_OutputStream << "}";
+        m_outputStream_ << "]";
+        m_outputStream_ << "}";
 
-        m_OutputStream.flush();
+        m_outputStream_.flush();
     }
 
+    /**
+     * Write the results file header.
+     */
     void WriteHeader()
     {
-        m_OutputStream << "{\"otherData\": {},\"traceEvents\":[";
-        m_OutputStream.flush();
+        m_outputStream_ << "{\"otherData\": {},\"traceEvents\":[";
+        m_outputStream_.flush();
     }
 
+    /**
+     * Write the results file footer.
+     */
     void WriteFooter()
     {
-        m_OutputStream << "]}";
-        m_OutputStream.flush();
+        m_outputStream_ << "]}";
+        m_outputStream_.flush();
     }
 
+    /**
+     * Get the singleton instance
+     * @return A reference to the Instrumentor singleton instance
+     */
     static Instrumentor& Get()
     {
         static Instrumentor instance;
         return instance;
     }
 
+    /**
+     * Register a memory profiler to be the active one.
+     * @param instrumentation Pointer to the active memory profiler
+     */
     static void RegisterInstrumentation(InstrumentationMemory* instrumentation)
     {
-        if (Instrumentor::Get().m_CurrentMemoryCheck)
+        if (Instrumentor::Get().m_currentMemoryCheck_)
         {
             throw "An instrumentation was already registered";
         }
 
-        Instrumentor::Get().m_CurrentMemoryCheck = instrumentation;
+        Instrumentor::Get().m_currentMemoryCheck_ = instrumentation;
     }
 
+    /**
+     * Get the current memory instrumentation.
+     * @return Pointer to the current memory profiler. nullptr if none have been registered.
+     */
     static InstrumentationMemory* GetCurrentMemoryInstrumentation()
     {
-        return Instrumentor::Get().m_CurrentMemoryCheck;
+        return Instrumentor::Get().m_currentMemoryCheck_;
     }
 };
 
-class InstrumentationMemory
+/**
+ * A class to manage a timer in a scope automatically.
+ */
+class InstrumentationTimer final
 {
 public:
-    InstrumentationMemory(const char* name)
-        : m_Name(name), m_Stopped(false)
+    /**
+     * Create and start a timer with a given name.
+     * @param name Name of the timer
+     */
+    explicit InstrumentationTimer(const char* name)
+        : m_name_(name), m_stopped_(false)
+    {
+        m_startTimepoint_ = std::chrono::high_resolution_clock::now();
+    }
+
+    /**
+     * Destroy and stop a timer.
+     */
+    ~InstrumentationTimer()
+    {
+        if (!m_stopped_)
+            Stop();
+    }
+
+    /**
+     * Stop a timer manually. This is not necessary under normal conditions.
+     */
+    void Stop()
+    {
+        const auto endTimepoint = std::chrono::high_resolution_clock::now();
+
+        const long long start = std::chrono::time_point_cast<std::chrono::microseconds>(m_startTimepoint_).
+                                time_since_epoch().
+                                count();
+        const long long end = std::chrono::time_point_cast<std::chrono::microseconds>(endTimepoint).time_since_epoch().
+            count();
+
+        const uint32_t threadId = static_cast<uint32_t>(std::hash<std::thread::id>{}(std::this_thread::get_id()));
+        Instrumentor::Get().WriteProfile({m_name_, threadId, start, end});
+
+        m_stopped_ = true;
+    }
+
+private:
+    /**
+     * Name of the timer
+     */
+    const char* m_name_;
+    /**
+     * time point where the timer started.
+     */
+    std::chrono::time_point<std::chrono::high_resolution_clock> m_startTimepoint_;
+    /**
+     * Whether the timer is stoped.
+     * It should stay false during the lifetime of the object under normal conditions.
+     */
+    bool m_stopped_;
+};
+
+/**
+ * A class to manage memory profiling in a scope automatically.
+ * @remark It should be the first thing created in a stack to ensure that it gets deleted last.
+ */
+class InstrumentationMemory final
+{
+public:
+    /**
+     * Create and start a memory profiling object with a given name.
+     * @param name Name of the memory profiler
+     */
+    explicit InstrumentationMemory(const char* name)
+        : m_name_(name), m_stopped_(false)
     {
         Instrumentor::Get().RegisterInstrumentation(this);
     }
 
+    /**
+     * Stop and destroy a memory profiling object.
+     */
     ~InstrumentationMemory()
     {
-        if (!m_Stopped)
+        if (!m_stopped_)
             Stop();
     }
 
+    /**
+     * Stop a profiler manually. Under normal conditions it should not be necessary.
+     */
     void Stop()
     {
         ProfileLock lock;
-        for (auto& ProfileResult : this->m_results | std::views::values)
+        for (auto& profileResult : this->m_results_ | std::views::values)
         {
-            Instrumentor::Get().WriteProfile(ProfileResult);
+            Instrumentor::Get().WriteProfile(profileResult);
         }
 
         std::cout << "Profiling stopped\n";
-        m_Stopped = true;
+        m_stopped_ = true;
     }
 
-    void register_push(void* address, size_t size)
+    /**
+     * Register when memory gets allocated.
+     * @param address Memory address of the memory being allocated
+     * @param size size of the memory being allocated
+     * @param isArray boolean indicating whether the memory was allocated for an array
+     */
+    void Register_push(void* address, const size_t size, const bool isArray)
     {
-        if (m_Stopped) return;
+        if (m_stopped_) return;
 
-        m_results[address] = {
+        m_results_[address] = {
+            .isArray = isArray,
             .location = address,
             .size = size,
-            .StackTrace = std::stacktrace::current(),
-            .Start = std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now()).
+            .stackTrace = std::stacktrace::current(),
+            .start = std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now()).
                      time_since_epoch().
                      count()
         };
     }
 
-    void register_pop(void* address)
-    {
-        if (m_Stopped) return;
 
-        auto findResult = m_results.find(address);
-        if (findResult != m_results.end())
+    /**
+     * Register memory deallocation.
+     * @param address The address of the memory being deallocated.
+     */
+    void Register_pop(void* address)
+    {
+        if (m_stopped_) return;
+
+        if (const auto findResult = m_results_.find(address); findResult != m_results_.end())
         {
-            findResult->second.End = std::chrono::time_point_cast<std::chrono::microseconds>(
+            findResult->second.end = std::chrono::time_point_cast<std::chrono::microseconds>(
                                          std::chrono::high_resolution_clock::now()).
                                      time_since_epoch().
                                      count();
@@ -289,79 +458,199 @@ public:
     }
 
 private:
-    const char* m_Name;
-    std::unordered_map<void*, ProfileResult_Memory> m_results;
-    bool m_Stopped;
+    /**
+     * Name of the memory profiler.
+     */
+    const char* m_name_;
+    /**
+     * map to track the memory being allocated, deallocated and leaked.
+     */
+    std::unordered_map<void*, ProfileResult_Memory> m_results_;
+    /**
+     * Whether the profiler is stopped. It should be false during the normal operation of the profiler.
+     */
+    bool m_stopped_;
 };
 
-class InstrumentationTimer
+/*
+ * These functions have been left uncommented somewhat on purpose.
+ * Here's the official documentation for the new operators. https://en.cppreference.com/w/cpp/memory/new/operator_new
+ * Here's the official documentation for the delete operators. https://en.cppreference.com/w/cpp/memory/new/operator_delete.html
+ *
+ * These functions try to do the same things but injecting the profiling tools into them.
+ */
+// ReSharper disable once CppInconsistentNaming
+inline void* operator new(size_t _Size)
 {
-public:
-    InstrumentationTimer(const char* name)
-        : m_Name(name), m_Stopped(false)
+    if (_Size == 0)
     {
-        m_StartTimepoint = std::chrono::high_resolution_clock::now();
+        _Size++;
     }
 
-    ~InstrumentationTimer()
+    void* ptr = std::malloc(_Size);
+
+    if (ptr == nullptr)
     {
-        if (!m_Stopped)
-            Stop();
+        throw std::bad_alloc();
     }
 
-    void Stop()
-    {
-        auto endTimepoint = std::chrono::high_resolution_clock::now();
-
-        long long start = std::chrono::time_point_cast<std::chrono::microseconds>(m_StartTimepoint).time_since_epoch().
-            count();
-        long long end = std::chrono::time_point_cast<std::chrono::microseconds>(endTimepoint).time_since_epoch().
-            count();
-
-        uint32_t threadID = static_cast<uint32_t>(std::hash<std::thread::id>{}(std::this_thread::get_id()));
-        Instrumentor::Get().WriteProfile({m_Name, start, end, threadID});
-
-        m_Stopped = true;
-    }
-
-private:
-    const char* m_Name;
-    std::chrono::time_point<std::chrono::high_resolution_clock> m_StartTimepoint;
-    bool m_Stopped;
-};
-
-
-inline void* operator new(size_t size)
-{
-    void* ptr = malloc(size);
-    if (ProfileLock::getSaveProfiling() == 0 && !ProfileLock::getForceLock())
+    if (ProfileLock::GetSaveProfiling() && !ProfileLock::GetForceLock())
     {
         ProfileLock lock;
-        if (auto MemoryInstrumentation = Instrumentor::GetCurrentMemoryInstrumentation())
-            // Because there's no guarantee there will already be an instrumentator active
-            MemoryInstrumentation->register_push(ptr, size);
-        std::cout << "Allocated memory: " << size << " at " << ptr << std::endl;
+        if (const auto memoryInstrumentation = Instrumentor::GetCurrentMemoryInstrumentation())
+            // Because there's no guarantee there will already be an instrumentor active
+            memoryInstrumentation->Register_push(ptr, _Size, false);
+        std::cout << "Allocated memory for variable at " << _Size << " at " << ptr << std::endl;
     }
     return ptr;
 }
 
-inline void operator delete(void* memory)
+// ReSharper disable once CppInconsistentNaming
+inline void* operator new[](size_t _Size)
 {
-    if (ProfileLock::getSaveProfiling() == 0 && !ProfileLock::getForceLock())
+    if (_Size == 0)
     {
-        ProfileLock lock;
-        if (auto MemoryInstrumentation = Instrumentor::GetCurrentMemoryInstrumentation())
-            MemoryInstrumentation->register_pop(memory);
-        std::cout << "deleted " << memory << std::endl;
+        _Size++;
     }
 
-    free(memory);
+    void* ptr = std::malloc(_Size);
+
+    if (ptr == nullptr)
+    {
+        throw std::bad_alloc();
+    }
+
+    if (ProfileLock::GetSaveProfiling() && !ProfileLock::GetForceLock())
+    {
+        ProfileLock lock;
+        if (const auto memoryInstrumentation = Instrumentor::GetCurrentMemoryInstrumentation())
+            // Because there's no guarantee there will already be an instrumentor active
+            memoryInstrumentation->Register_push(ptr, _Size, true);
+        std::cout << "Allocated memory for array at " << _Size << " at " << ptr << std::endl;
+    }
+    return ptr;
 }
 
+// ReSharper disable once CppInconsistentNaming
+inline void* operator new(const size_t _Size, const std::nothrow_t& tag) noexcept
+{
+    void* ptr = std::malloc(_Size);
+
+    if (ProfileLock::GetSaveProfiling() && !ProfileLock::GetForceLock())
+    {
+        ProfileLock lock;
+        if (const auto memoryInstrumentation = Instrumentor::GetCurrentMemoryInstrumentation())
+            // Because there's no guarantee there will already be an instrumentor active
+            memoryInstrumentation->Register_push(ptr, ptr ? _Size : 0, false);
+        std::cout << "Allocated memory for variable noexcept at " << _Size << " at " << ptr << std::endl;
+    }
+    return ptr;
+}
+
+// ReSharper disable once CppInconsistentNaming
+inline void* operator new[](const size_t _Size, const std::nothrow_t& tag) noexcept
+{
+    void* ptr = std::malloc(_Size);
+
+    if (ProfileLock::GetSaveProfiling() && !ProfileLock::GetForceLock())
+    {
+        ProfileLock lock;
+        if (const auto memoryInstrumentation = Instrumentor::GetCurrentMemoryInstrumentation())
+            // Because there's no guarantee there will already be an instrumentor active
+            memoryInstrumentation->Register_push(ptr, ptr ? _Size : 0, true);
+        std::cout << "Allocated memory for array noexcept at " << _Size << " at " << ptr << std::endl;
+    }
+    return ptr;
+}
+
+// ReSharper disable once CppInconsistentNaming
+inline void operator delete(void* _Block)
+{
+    if (_Block == nullptr)
+    {
+        return;
+    }
+
+    if (ProfileLock::GetSaveProfiling() && !ProfileLock::GetForceLock())
+    {
+        ProfileLock lock;
+        if (const auto memoryInstrumentation = Instrumentor::GetCurrentMemoryInstrumentation())
+            memoryInstrumentation->Register_pop(_Block);
+        std::cout << "deleted variable at " << _Block << std::endl;
+    }
+
+    std::free(_Block);
+    _Block = nullptr;
+}
+
+// ReSharper disable once CppInconsistentNaming
+inline void operator delete[](void* _Block)
+{
+    if (_Block == nullptr)
+    {
+        return;
+    }
+
+    if (ProfileLock::GetSaveProfiling() && !ProfileLock::GetForceLock())
+    {
+        ProfileLock lock;
+        if (const auto memoryInstrumentation = Instrumentor::GetCurrentMemoryInstrumentation())
+            memoryInstrumentation->Register_pop(_Block);
+        std::cout << "deleted array at " << _Block << std::endl;
+    }
+
+    std::free(_Block);
+    _Block = nullptr;
+}
+
+// ReSharper disable once CppInconsistentNaming
+inline void operator delete(void* _Block, const std::nothrow_t& tag) noexcept
+{
+    if (_Block == nullptr)
+    {
+        return;
+    }
+
+    if (ProfileLock::GetSaveProfiling() && !ProfileLock::GetForceLock())
+    {
+        ProfileLock lock;
+        if (const auto memoryInstrumentation = Instrumentor::GetCurrentMemoryInstrumentation())
+            memoryInstrumentation->Register_pop(_Block);
+        std::cout << "deleted variable noexcept at " << _Block << std::endl;
+    }
+
+    std::free(_Block);
+    _Block = nullptr;
+}
+
+// ReSharper disable once CppInconsistentNaming
+inline void operator delete[](void* _Block, const std::nothrow_t& tag) noexcept
+{
+    if (_Block == nullptr)
+    {
+        return;
+    }
+
+    if (ProfileLock::GetSaveProfiling() && !ProfileLock::GetForceLock())
+    {
+        ProfileLock lock;
+        if (const auto memoryInstrumentation = Instrumentor::GetCurrentMemoryInstrumentation())
+            memoryInstrumentation->Register_pop(_Block);
+        std::cout << "deleted array noexcept at " << _Block << std::endl;
+    }
+
+    std::free(_Block);
+    _Block = nullptr;
+}
+
+
+/*
+ * These preprocessors are used to simplify the creation of the profiler objects.
+ */
 // The "if" preprocessor command and the macro commands are a mix of Cherno and danybeam (me)
 // Regardless of the copyright notice on modified versions of the code in the code the section bellow should be considered under the MIT license.
 #if PROFILE
-#define PROFILE_SCOPE_MEMORY(name) ProfileLock::requestForceLock();InstrumentationMemory memoryProfiler##__LINE__(name);ProfileLock::requestForceUnlock();
+#define PROFILE_SCOPE_MEMORY(name) ProfileLock::RequestForceLock();InstrumentationMemory memoryProfiler##__LINE__(name);ProfileLock::RequestForceUnlock();
 #define PROFILE_SCOPE_TIME(name) InstrumentationTimer timer##__LINE__(name)
 #define PROFILE_FUNCTION_TIME() PROFILE_SCOPE(__FUNCSIG__)
 #define START_SESSION(name)  Instrumentor::Get().BeginSession(name)

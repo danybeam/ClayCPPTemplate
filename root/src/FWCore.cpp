@@ -12,11 +12,11 @@
 import utils;
 
 fw::FWCore::FWCore(uint32_t width, uint32_t height) :
-    m_errorCodes(NONE),
+    m_errorCodes_(NONE),
     m_window_client_height_(height),
     m_window_client_width_(width)
 {
-    m_errorCodes = Init();
+    m_errorCodes_ = Init();
 }
 
 fw::FWCore::~FWCore()
@@ -72,7 +72,7 @@ uint32_t fw::FWCore::Run(std::unique_ptr<flecs::world>&& world)
 
             BeginDrawing();
             ClearBackground({255, 255, 255, 255});
-            Clay_Raylib_Render(clay_RenderCommandArray, m_clay_Font);
+            Clay_Raylib_Render(clay_RenderCommandArray, m_clay_font_);
             EndDrawing();
         }
     );
@@ -117,36 +117,36 @@ bool fw::FWCore::InitClay()
     Clay_Raylib_Initialize(static_cast<int>(m_window_client_width_), static_cast<int>(m_window_client_height_),
                            "raylib clay base", 0);
 
-    m_clay_RequiredMemory = static_cast<uint64_t>(8) * Clay_MinMemorySize();
+    m_clay_requiredMemory_ = static_cast<uint64_t>(8) * Clay_MinMemorySize();
 
-    m_clay_MemoryArena = {};
-    m_clay_MemoryArena.capacity = m_clay_RequiredMemory;
-    m_clay_MemoryArena.memory = static_cast<char*>(malloc(m_clay_RequiredMemory));
+    m_clay_memoryArena_ = {};
+    m_clay_memoryArena_.capacity = m_clay_requiredMemory_;
+    m_clay_memoryArena_.memory = static_cast<char*>(malloc(m_clay_requiredMemory_));
 
-    m_clay_Resolution = {
+    m_clay_resolution_ = {
         .width = static_cast<float>(GetScreenWidth()),
         .height = static_cast<float>(GetScreenHeight())
     };
 
-    m_clay_ErrorHandler = {};
-    m_clay_ErrorHandler.errorHandlerFunction = &Clay_errorHandlerFunction;
-    m_clay_ErrorHandler.userData = nullptr;
+    m_clay_errorHandler_ = {};
+    m_clay_errorHandler_.errorHandlerFunction = &Clay_errorHandlerFunction;
+    m_clay_errorHandler_.userData = nullptr;
 
-    m_clay_Font[0] = LoadFontEx("resources/CaskaydiaCove/CaskaydiaCoveExtraLight.otf", 32, nullptr, 400);
-    m_clay_Font[1] = LoadFontEx("resources/CaskaydiaCove/CaskaydiaCoveExtraLightItalic.otf", 32, nullptr, 400);
-    m_clay_Font[2] = LoadFontEx("resources/CaskaydiaCove/CaskaydiaCoveLight.otf", 32, nullptr, 400);
-    m_clay_Font[3] = LoadFontEx("resources/CaskaydiaCove/CaskaydiaCoveLightItalic.otf", 32, nullptr, 400);
-    m_clay_Font[4] = LoadFontEx("resources/CaskaydiaCove/CaskaydiaCoveSemiLight.otf", 32, nullptr, 400);
-    m_clay_Font[5] = LoadFontEx("resources/CaskaydiaCove/CaskaydiaCoveSemiLightItalic.otf", 32, nullptr, 400);
-    m_clay_Font[6] = LoadFontEx("resources/CaskaydiaCove/CaskaydiaCoveRegular.otf", 32, nullptr, 400);
-    m_clay_Font[7] = LoadFontEx("resources/CaskaydiaCove/CaskaydiaCoveRegularItalic.otf", 32, nullptr, 400);
-    m_clay_Font[8] = LoadFontEx("resources/CaskaydiaCove/CaskaydiaCoveSemiBold.otf", 32, nullptr, 400);
-    m_clay_Font[9] = LoadFontEx("resources/CaskaydiaCove/CaskaydiaCoveSemiBoldItalic.otf", 32, nullptr, 400);
-    m_clay_Font[10] = LoadFontEx("resources/CaskaydiaCove/CaskaydiaCoveBold.otf", 32, nullptr, 400);
-    m_clay_Font[11] = LoadFontEx("resources/CaskaydiaCove/CaskaydiaCoveBoldItalic.otf", 32, nullptr, 400);
+    m_clay_font_[0] = LoadFontEx("resources/CaskaydiaCove/CaskaydiaCoveExtraLight.otf", 32, nullptr, 400);
+    m_clay_font_[1] = LoadFontEx("resources/CaskaydiaCove/CaskaydiaCoveExtraLightItalic.otf", 32, nullptr, 400);
+    m_clay_font_[2] = LoadFontEx("resources/CaskaydiaCove/CaskaydiaCoveLight.otf", 32, nullptr, 400);
+    m_clay_font_[3] = LoadFontEx("resources/CaskaydiaCove/CaskaydiaCoveLightItalic.otf", 32, nullptr, 400);
+    m_clay_font_[4] = LoadFontEx("resources/CaskaydiaCove/CaskaydiaCoveSemiLight.otf", 32, nullptr, 400);
+    m_clay_font_[5] = LoadFontEx("resources/CaskaydiaCove/CaskaydiaCoveSemiLightItalic.otf", 32, nullptr, 400);
+    m_clay_font_[6] = LoadFontEx("resources/CaskaydiaCove/CaskaydiaCoveRegular.otf", 32, nullptr, 400);
+    m_clay_font_[7] = LoadFontEx("resources/CaskaydiaCove/CaskaydiaCoveRegularItalic.otf", 32, nullptr, 400);
+    m_clay_font_[8] = LoadFontEx("resources/CaskaydiaCove/CaskaydiaCoveSemiBold.otf", 32, nullptr, 400);
+    m_clay_font_[9] = LoadFontEx("resources/CaskaydiaCove/CaskaydiaCoveSemiBoldItalic.otf", 32, nullptr, 400);
+    m_clay_font_[10] = LoadFontEx("resources/CaskaydiaCove/CaskaydiaCoveBold.otf", 32, nullptr, 400);
+    m_clay_font_[11] = LoadFontEx("resources/CaskaydiaCove/CaskaydiaCoveBoldItalic.otf", 32, nullptr, 400);
 
-    Clay_Initialize(m_clay_MemoryArena, m_clay_Resolution, m_clay_ErrorHandler);
-    Clay_SetMeasureTextFunction(Raylib_MeasureText, m_clay_Font);
+    Clay_Initialize(m_clay_memoryArena_, m_clay_resolution_, m_clay_errorHandler_);
+    Clay_SetMeasureTextFunction(Raylib_MeasureText, m_clay_font_);
 
     return true;
 }
@@ -165,9 +165,9 @@ void fw::FWCore::Shutdown()
 
 void fw::FWCore::ShutdownClay()
 {
-    delete m_clay_MemoryArena.memory;
-    m_clay_MemoryArena.memory = nullptr;
-    m_clay_ErrorHandler.errorHandlerFunction = nullptr;
+    delete m_clay_memoryArena_.memory;
+    m_clay_memoryArena_.memory = nullptr;
+    m_clay_errorHandler_.errorHandlerFunction = nullptr;
 }
 
 void fw::FWCore::ShutdownSDL()
@@ -204,9 +204,4 @@ bool fw::FWCore::ProcessSDLEvent(SDL_Event* event)
     }
 
     return true;
-}
-
-void fw::FWCore::freeUniquePointer(flecs::world* world)
-{
-    int foo = 9;
 }

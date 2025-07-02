@@ -1,8 +1,8 @@
 #include <FWCore.h>
 #include <flecs.h>
 
-uint8_t ProfileLock::saveProfiling = 0; // Necessary to define saveProfiling
-bool ProfileLock::forceLock = false;
+uint8_t ProfileLock::semaphore_ = 1; // Necessary to define saveProfiling
+bool ProfileLock::forceLock_ = false;
 
 int main()
 {
