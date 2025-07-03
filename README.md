@@ -25,6 +25,14 @@ The known issues mostly pertain to the profiler right now and they're mentioned 
 - This has not been tested in multithreaded apps.
   - Even if it could work out of the box IDK what settings should be used.
 
+ ## Roadmap
+
+ Most of the improvements are for the profiler code itself but I'm putting this here until I separate it into its own library.
+ - Separate the profiler into its own library
+ - Migrate to C++20 module architecture
+ - Support memory and time profiling simultaneously
+ - Test multithreading and react in consequence
+
 ## License
 
 This template is licensed under the MIT License. For more info check the license file.
